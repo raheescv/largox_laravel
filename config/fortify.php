@@ -144,7 +144,7 @@ return [
     */
 
     'features' => [
-        // Registration disabled — users are seeded manually.
+        Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([
