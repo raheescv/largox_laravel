@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { FileText, PlusCircle, RefreshCw } from 'lucide-vue-next';
+import { computed } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,9 @@ const storeForm = useForm({
     contents: defaultConfig(),
     enable: true,
 });
+const storeAgentError = computed(
+    () => (storeForm.errors as Record<string, string>).agent,
+);
 
 function defaultConfig(): string {
     return `server {
@@ -97,13 +101,24 @@ function destroy(name: string) {
 
     <div class="space-y-6">
         <div class="flex items-center justify-between">
-            <Heading title="Nginx Sites" :description="`${server.name} · ${server.host}`" />
-            <Button variant="outline" size="sm" :disabled="reloadForm.processing" @click="reload">
+            <Heading
+                title="Nginx Sites"
+                :description="`${server.name} · ${server.host}`"
+            />
+            <Button
+                variant="outline"
+                size="sm"
+                :disabled="reloadForm.processing"
+                @click="reload"
+            >
                 <RefreshCw class="mr-2 size-4" /> Reload nginx
             </Button>
         </div>
 
-        <div v-if="error" class="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40">
+        <div
+            v-if="error"
+            class="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40"
+        >
             {{ error }}
         </div>
 
@@ -112,14 +127,26 @@ function destroy(name: string) {
             <Card>
                 <CardHeader>
                     <CardTitle>New Site</CardTitle>
-                    <CardDescription>Write a config to sites-available</CardDescription>
+                    <CardDescription
+                        >Write a config to sites-available</CardDescription
+                    >
                 </CardHeader>
                 <CardContent>
                     <form class="space-y-4" @submit.prevent="submitStore">
                         <div class="grid gap-2">
                             <Label for="name">Config filename</Label>
-                            <Input id="name" v-model="storeForm.name" placeholder="example.com" required />
-                            <p v-if="storeForm.errors.name" class="text-sm text-destructive">{{ storeForm.errors.name }}</p>
+                            <Input
+                                id="name"
+                                v-model="storeForm.name"
+                                placeholder="example.com"
+                                required
+                            />
+                            <p
+                                v-if="storeForm.errors.name"
+                                class="text-sm text-destructive"
+                            >
+                                {{ storeForm.errors.name }}
+                            </p>
                         </div>
                         <div class="grid gap-2">
                             <Label for="contents">Config contents</Label>
@@ -127,17 +154,35 @@ function destroy(name: string) {
                                 id="contents"
                                 v-model="storeForm.contents"
                                 rows="12"
-                                class="w-full font-mono text-xs rounded-md border border-input bg-background px-3 py-2 resize-y"
+                                class="w-full resize-y rounded-md border border-input bg-background px-3 py-2 font-mono text-xs"
                                 required
                             />
-                            <p v-if="storeForm.errors.contents" class="text-sm text-destructive">{{ storeForm.errors.contents }}</p>
+                            <p
+                                v-if="storeForm.errors.contents"
+                                class="text-sm text-destructive"
+                            >
+                                {{ storeForm.errors.contents }}
+                            </p>
                         </div>
                         <label class="flex items-center gap-2 text-sm">
-                            <input type="checkbox" v-model="storeForm.enable" class="rounded border-input" />
+                            <input
+                                type="checkbox"
+                                v-model="storeForm.enable"
+                                class="rounded border-input"
+                            />
                             Enable and reload nginx
                         </label>
-                        <p v-if="storeForm.errors.agent" class="text-sm text-destructive">{{ storeForm.errors.agent }}</p>
-                        <Button type="submit" :disabled="storeForm.processing" class="w-full">
+                        <p
+                            v-if="storeAgentError"
+                            class="text-sm text-destructive"
+                        >
+                            {{ storeAgentError }}
+                        </p>
+                        <Button
+                            type="submit"
+                            :disabled="storeForm.processing"
+                            class="w-full"
+                        >
                             <PlusCircle class="mr-2 size-4" /> Create
                         </Button>
                     </form>
@@ -146,23 +191,43 @@ function destroy(name: string) {
 
             <!-- Site list -->
             <div class="space-y-3">
-                <div v-if="sites.length === 0" class="flex flex-col items-center justify-center rounded-xl border border-dashed py-12 text-center text-muted-foreground">
+                <div
+                    v-if="sites.length === 0"
+                    class="flex flex-col items-center justify-center rounded-xl border border-dashed py-12 text-center text-muted-foreground"
+                >
                     <FileText class="mb-3 size-10 opacity-40" />
                     <p class="text-sm">No sites in sites-available yet.</p>
                 </div>
                 <Card v-for="site in sites" :key="site.name">
-                    <CardContent class="flex items-center justify-between py-3 px-4">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <FileText class="size-4 shrink-0 text-muted-foreground" />
+                    <CardContent
+                        class="flex items-center justify-between px-4 py-3"
+                    >
+                        <div class="flex min-w-0 items-center gap-3">
+                            <FileText
+                                class="size-4 shrink-0 text-muted-foreground"
+                            />
                             <div class="min-w-0">
-                                <a :href="nginxRoutes.show.url({ name: site.name })" class="font-medium text-sm hover:underline truncate block">
+                                <a
+                                    :href="
+                                        nginxRoutes.show.url({
+                                            name: site.name,
+                                        })
+                                    "
+                                    class="block truncate text-sm font-medium hover:underline"
+                                >
                                     {{ site.name }}
                                 </a>
-                                <p class="text-xs text-muted-foreground">{{ site.size }} bytes · {{ site.mod_time }}</p>
+                                <p class="text-xs text-muted-foreground">
+                                    {{ site.size }} bytes · {{ site.mod_time }}
+                                </p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <Badge :variant="site.enabled ? 'default' : 'secondary'">
+                        <div class="flex shrink-0 items-center gap-2">
+                            <Badge
+                                :variant="
+                                    site.enabled ? 'default' : 'secondary'
+                                "
+                            >
                                 {{ site.enabled ? 'enabled' : 'disabled' }}
                             </Badge>
                             <Button
@@ -171,20 +236,23 @@ function destroy(name: string) {
                                 size="sm"
                                 :disabled="enableForm.processing"
                                 @click="enable(site.name)"
-                            >Enable</Button>
+                                >Enable</Button
+                            >
                             <Button
                                 v-else
                                 variant="outline"
                                 size="sm"
                                 :disabled="disableForm.processing"
                                 @click="disable(site.name)"
-                            >Disable</Button>
+                                >Disable</Button
+                            >
                             <Button
                                 variant="destructive"
                                 size="sm"
                                 :disabled="deleteForm.processing"
                                 @click="destroy(site.name)"
-                            >Delete</Button>
+                                >Delete</Button
+                            >
                         </div>
                     </CardContent>
                 </Card>

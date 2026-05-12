@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { Trash2 } from 'lucide-vue-next';
+import { computed } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import supervisorRoutes from '@/routes/supervisor';
 import { dashboard } from '@/routes';
 
@@ -19,7 +15,10 @@ defineOptions({
         breadcrumbs: [
             { title: 'Dashboard', href: dashboard() },
             { title: 'Supervisor', href: supervisorRoutes.index() },
-            { title: pageProps.name, href: supervisorRoutes.show.url({ name: pageProps.name }) },
+            {
+                title: pageProps.name,
+                href: supervisorRoutes.show.url({ name: pageProps.name }),
+            },
         ],
     }),
 });
@@ -33,6 +32,9 @@ const props = defineProps<{
 const updateForm = useForm({
     contents: props.file?.contents ?? '',
 });
+const updateAgentError = computed(
+    () => (updateForm.errors as Record<string, string>).agent,
+);
 
 function submitUpdate() {
     updateForm.put(supervisorRoutes.update.url({ name: props.name }));
@@ -52,12 +54,20 @@ function destroy() {
     <div class="space-y-6">
         <div class="flex items-center justify-between">
             <Heading :title="name" description="Supervisor program config" />
-            <Button variant="destructive" size="sm" :disabled="deleteForm.processing" @click="destroy">
+            <Button
+                variant="destructive"
+                size="sm"
+                :disabled="deleteForm.processing"
+                @click="destroy"
+            >
                 <Trash2 class="mr-2 size-4" /> Remove
             </Button>
         </div>
 
-        <div v-if="error" class="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40">
+        <div
+            v-if="error"
+            class="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40"
+        >
             {{ error }}
         </div>
 
@@ -70,12 +80,21 @@ function destroy() {
                     <textarea
                         v-model="updateForm.contents"
                         rows="20"
-                        class="w-full font-mono text-xs rounded-md border border-input bg-background px-3 py-2 resize-y"
+                        class="w-full resize-y rounded-md border border-input bg-background px-3 py-2 font-mono text-xs"
                         required
                     />
-                    <p v-if="updateForm.errors.contents" class="text-sm text-destructive">{{ updateForm.errors.contents }}</p>
-                    <p v-if="updateForm.errors.agent" class="text-sm text-destructive">{{ updateForm.errors.agent }}</p>
-                    <Button type="submit" :disabled="updateForm.processing">Save</Button>
+                    <p
+                        v-if="updateForm.errors.contents"
+                        class="text-sm text-destructive"
+                    >
+                        {{ updateForm.errors.contents }}
+                    </p>
+                    <p v-if="updateAgentError" class="text-sm text-destructive">
+                        {{ updateAgentError }}
+                    </p>
+                    <Button type="submit" :disabled="updateForm.processing"
+                        >Save</Button
+                    >
                 </form>
             </CardContent>
         </Card>
