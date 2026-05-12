@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { LayoutGrid, Server, ScrollText } from 'lucide-vue-next';
+import { LayoutGrid, Server, ScrollText, Globe, Activity, Clock } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -29,6 +29,21 @@ const mainNavItems: NavItem[] = [
         title: 'Servers',
         href: servers.index(),
         icon: Server,
+    },
+    {
+        title: 'Nginx Sites',
+        href: '/nginx',
+        icon: Globe,
+    },
+    {
+        title: 'Supervisor',
+        href: '/supervisor',
+        icon: Activity,
+    },
+    {
+        title: 'Crontab',
+        href: '/cron',
+        icon: Clock,
     },
     {
         title: 'Audit Logs',
