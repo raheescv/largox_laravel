@@ -63,7 +63,7 @@ class ServerController extends Controller
     public function dispatchAction(Request $request, Server $server, AgentClient $agent): RedirectResponse
     {
         $data = $request->validate([
-            'action'  => ['required', 'string'],
+            'action' => ['required', 'string'],
             'payload' => ['nullable', 'array'],
         ]);
 

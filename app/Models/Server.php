@@ -19,10 +19,10 @@ class Server extends Model
     protected $hidden = ['agent_secret', 'ssh_private_key'];
 
     protected $casts = [
-        'agent_secret'    => 'encrypted',
+        'agent_secret' => 'encrypted',
         'ssh_private_key' => 'encrypted',
-        'meta'            => 'array',
-        'last_seen_at'    => 'datetime',
+        'meta' => 'array',
+        'last_seen_at' => 'datetime',
     ];
 
     public function sites(): HasMany

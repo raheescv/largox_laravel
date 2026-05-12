@@ -23,24 +23,24 @@ class AgentClient
         $path = '/v1/execute';
         $body = json_encode([
             'server_id' => (string) $server->id,
-            'action'    => $action,
-            'payload'   => (object) $payload,
+            'action' => $action,
+            'payload' => (object) $payload,
         ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 
-        $ts  = (string) time();
+        $ts = (string) time();
         $sig = hash_hmac('sha256', "$ts\nPOST\n$path\n$body", $server->agent_secret);
 
         try {
             $response = Http::withHeaders([
                 'X-Agent-Timestamp' => $ts,
                 'X-Agent-Signature' => $sig,
-                'Content-Type'      => 'application/json',
-                'Accept'            => 'application/json',
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
             ])
                 ->connectTimeout(config('agent.connect_timeout'))
                 ->timeout(config('agent.request_timeout'))
                 ->withBody($body, 'application/json')
-                ->post($server->baseUrl() . $path);
+                ->post($server->baseUrl().$path);
         } catch (ConnectionException $e) {
             $this->audit($server, $action, $payload, 'fail', $e->getMessage());
             throw new RuntimeException("agent unreachable: {$e->getMessage()}", 0, $e);
@@ -53,11 +53,11 @@ class AgentClient
 
     public function health(Server $server): array
     {
-        $response = Http::connectTimeout(3)->timeout(5)->get($server->baseUrl() . '/healthz');
+        $response = Http::connectTimeout(3)->timeout(5)->get($server->baseUrl().'/healthz');
 
         return [
             'reachable' => $response->successful(),
-            'body'      => $response->json(),
+            'body' => $response->json(),
         ];
     }
 
@@ -74,7 +74,7 @@ class AgentClient
         );
 
         if (! $ok) {
-            $err = $response->json('error') ?? ('HTTP ' . $response->status());
+            $err = $response->json('error') ?? ('HTTP '.$response->status());
             throw new RuntimeException("agent error: $err");
         }
     }
@@ -82,13 +82,13 @@ class AgentClient
     private function audit(Server $server, string $action, array $payload, string $status, ?string $response): void
     {
         AuditLog::create([
-            'user_id'   => Auth::id(),
+            'user_id' => Auth::id(),
             'server_id' => $server->id,
-            'action'    => $action,
-            'payload'   => $payload,
-            'status'    => $status,
-            'response'  => $response,
-            'ip'        => request()?->ip(),
+            'action' => $action,
+            'payload' => $payload,
+            'status' => $status,
+            'response' => $response,
+            'ip' => request()?->ip(),
         ]);
     }
 }

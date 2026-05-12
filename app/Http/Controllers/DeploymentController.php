@@ -15,7 +15,7 @@ class DeploymentController extends Controller
     public function index(Site $site): Response
     {
         return Inertia::render('Deployments/Index', [
-            'site'        => $site,
+            'site' => $site,
             'deployments' => $site->deployments()->latest()->paginate(25),
         ]);
     }
@@ -32,8 +32,8 @@ class DeploymentController extends Controller
         $deployment = Deployment::create([
             'site_id' => $site->id,
             'user_id' => $request->user()->id,
-            'status'  => Deployment::STATUS_QUEUED,
-            'branch'  => $request->input('branch', $site->branch),
+            'status' => Deployment::STATUS_QUEUED,
+            'branch' => $request->input('branch', $site->branch),
         ]);
 
         RunDeployment::dispatch($deployment->id);

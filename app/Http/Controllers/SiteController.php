@@ -18,14 +18,14 @@ class SiteController extends Controller
     {
         return Inertia::render('Sites/Index', [
             'server' => $server,
-            'sites'  => $server->sites()->latest()->get(),
+            'sites' => $server->sites()->latest()->get(),
         ]);
     }
 
     public function show(Site $site): Response
     {
         return Inertia::render('Sites/Show', [
-            'site'        => $site->load('server'),
+            'site' => $site->load('server'),
             'deployments' => $site->deployments()->latest()->limit(20)->get(),
         ]);
     }
@@ -58,8 +58,8 @@ class SiteController extends Controller
 
         try {
             $agent->execute($site->server, 'git_clone', [
-                'path'   => $site->path,
-                'repo'   => $request->input('repository'),
+                'path' => $site->path,
+                'repo' => $request->input('repository'),
                 'branch' => $request->input('branch', $site->branch),
             ]);
 
@@ -75,7 +75,7 @@ class SiteController extends Controller
 
         try {
             $agent->execute($site->server, 'env_write', [
-                'path'     => $site->path,
+                'path' => $site->path,
                 'contents' => $request->input('contents'),
             ]);
 

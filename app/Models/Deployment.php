@@ -10,10 +10,13 @@ class Deployment extends Model
 {
     use HasFactory;
 
-    public const STATUS_QUEUED  = 'queued';
+    public const STATUS_QUEUED = 'queued';
+
     public const STATUS_RUNNING = 'running';
+
     public const STATUS_SUCCESS = 'success';
-    public const STATUS_FAILED  = 'failed';
+
+    public const STATUS_FAILED = 'failed';
 
     protected $fillable = [
         'site_id', 'user_id', 'status', 'commit_sha', 'branch',
@@ -21,7 +24,7 @@ class Deployment extends Model
     ];
 
     protected $casts = [
-        'started_at'  => 'datetime',
+        'started_at' => 'datetime',
         'finished_at' => 'datetime',
     ];
 

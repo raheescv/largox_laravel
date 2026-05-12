@@ -17,8 +17,8 @@ class Site extends Model
     ];
 
     protected $casts = [
-        'composer'     => 'boolean',
-        'npm_build'    => 'boolean',
+        'composer' => 'boolean',
+        'npm_build' => 'boolean',
         'artisan_cmds' => 'array',
     ];
 

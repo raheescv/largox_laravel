@@ -16,35 +16,34 @@ class RunDeployment implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 1800;
-    public int $tries   = 1;
 
-    public function __construct(public int $deploymentId)
-    {
-    }
+    public int $tries = 1;
+
+    public function __construct(public int $deploymentId) {}
 
     public function handle(AgentClient $agent): void
     {
         /** @var Deployment $deployment */
         $deployment = Deployment::with('site.server')->findOrFail($this->deploymentId);
-        $site       = $deployment->site;
+        $site = $deployment->site;
 
         $deployment->update([
-            'status'     => Deployment::STATUS_RUNNING,
+            'status' => Deployment::STATUS_RUNNING,
             'started_at' => now(),
         ]);
 
         try {
             $result = $agent->execute($site->server, 'deploy_project', [
-                'path'         => $site->path,
-                'branch'       => $deployment->branch ?? $site->branch,
-                'composer'     => (bool) $site->composer,
-                'npm_build'    => (bool) $site->npm_build,
+                'path' => $site->path,
+                'branch' => $deployment->branch ?? $site->branch,
+                'composer' => (bool) $site->composer,
+                'npm_build' => (bool) $site->npm_build,
                 'artisan_cmds' => $site->artisan_cmds ?? [],
             ]);
 
             $deployment->update([
-                'status'      => Deployment::STATUS_SUCCESS,
-                'output'      => json_encode($result['output'] ?? null, JSON_PRETTY_PRINT),
+                'status' => Deployment::STATUS_SUCCESS,
+                'output' => json_encode($result['output'] ?? null, JSON_PRETTY_PRINT),
                 'finished_at' => now(),
             ]);
 
@@ -53,8 +52,8 @@ class RunDeployment implements ShouldQueue
             }
         } catch (Throwable $e) {
             $deployment->update([
-                'status'      => Deployment::STATUS_FAILED,
-                'error'       => $e->getMessage(),
+                'status' => Deployment::STATUS_FAILED,
+                'error' => $e->getMessage(),
                 'finished_at' => now(),
             ]);
             throw $e;
