@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Plus, Trash2, ChevronRight } from 'lucide-vue-next';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
@@ -37,16 +37,16 @@ const form = useForm({
     repository: '',
     branch: 'main',
     nginx_config: props.defaults.nginx_config,
-    nginx_name: '',
+    nginx_name: props.defaults.domain,
     supervisor_config: props.defaults.supervisor_config,
-    supervisor_name: '',
+    supervisor_name: props.defaults.domain ? `${props.defaults.domain}.conf` : '',
     cron_user: 'www-data',
     cron_entries: [] as string[],
     env_contents: '',
     composer: true,
     npm_build: false,
     artisan_cmds: ['migrate --force', 'config:cache', 'route:cache', 'view:cache'],
-    enable_supervisor: false,
+    enable_supervisor: true,
     enable_nginx: true,
 });
 
