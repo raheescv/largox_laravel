@@ -1,7 +1,18 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { FileText, PlusCircle, RefreshCw } from 'lucide-vue-next';
-import { computed } from 'vue';
+import {
+    FileText,
+    Globe,
+    PlusCircle,
+    Power,
+    PowerOff,
+    RefreshCw,
+    Search,
+    SlidersHorizontal,
+    Trash2,
+    X,
+} from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,6 +49,8 @@ const props = defineProps<{
     sites: NginxSite[];
     error: string | null;
 }>();
+const search = ref('');
+const statusFilter = ref<'all' | 'enabled' | 'disabled'>('all');
 
 const storeForm = useForm({
     name: '',
@@ -47,6 +60,28 @@ const storeForm = useForm({
 const storeAgentError = computed(
     () => (storeForm.errors as Record<string, string>).agent,
 );
+const enabledSites = computed(
+    () => props.sites.filter((site) => site.enabled).length,
+);
+const disabledSites = computed(() => props.sites.length - enabledSites.value);
+const filteredSites = computed(() => {
+    const q = search.value.trim().toLowerCase();
+
+    return props.sites.filter((site) => {
+        const matchesSearch =
+            !q ||
+            [site.name, site.mod_time, `${site.size}`]
+                .join(' ')
+                .toLowerCase()
+                .includes(q);
+        const matchesStatus =
+            statusFilter.value === 'all' ||
+            (statusFilter.value === 'enabled' && site.enabled) ||
+            (statusFilter.value === 'disabled' && !site.enabled);
+
+        return matchesSearch && matchesStatus;
+    });
+});
 
 function defaultConfig(): string {
     return `server {
@@ -94,41 +129,70 @@ function destroy(name: string) {
         deleteForm.delete(nginxRoutes.destroy.url({ name }));
     }
 }
+
+function formatBytes(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+function clearFilters() {
+    search.value = '';
+    statusFilter.value = 'all';
+}
 </script>
 
 <template>
     <Head title="Nginx Sites" />
 
-    <div class="space-y-6">
-        <div class="flex items-center justify-between">
-            <Heading
-                title="Nginx Sites"
-                :description="`${server.name} · ${server.host}`"
-            />
-            <Button
-                variant="outline"
-                size="sm"
-                :disabled="reloadForm.processing"
-                @click="reload"
+    <div class="ops-page">
+        <section class="ops-hero">
+            <div
+                class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
             >
-                <RefreshCw class="mr-2 size-4" /> Reload nginx
-            </Button>
-        </div>
+                <Heading
+                    title="Nginx Sites"
+                    :description="`${server.name} · ${server.host}`"
+                    class="mb-0"
+                />
+                <div class="grid grid-cols-3 gap-2 sm:min-w-96">
+                    <div class="ops-stat">
+                        <p class="text-xs text-muted-foreground">Total</p>
+                        <p class="mt-1 text-2xl font-semibold">
+                            {{ sites.length }}
+                        </p>
+                    </div>
+                    <div class="ops-stat">
+                        <p class="text-xs text-muted-foreground">Enabled</p>
+                        <p class="mt-1 text-2xl font-semibold">
+                            {{ enabledSites }}
+                        </p>
+                    </div>
+                    <div class="ops-stat">
+                        <p class="text-xs text-muted-foreground">Disabled</p>
+                        <p class="mt-1 text-2xl font-semibold">
+                            {{ disabledSites }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <div
             v-if="error"
-            class="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40"
+            class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40"
         >
             {{ error }}
         </div>
 
-        <div class="grid gap-6 md:grid-cols-2">
-            <!-- Add site -->
-            <Card>
+        <div class="grid gap-6 xl:grid-cols-[0.9fr_1.35fr]">
+            <Card class="h-fit">
                 <CardHeader>
-                    <CardTitle>New Site</CardTitle>
+                    <CardTitle class="flex items-center gap-2">
+                        <PlusCircle class="size-5 text-primary" />
+                        New Site
+                    </CardTitle>
                     <CardDescription
-                        >Write a config to sites-available</CardDescription
+                        >Write a config to sites-available.</CardDescription
                     >
                 </CardHeader>
                 <CardContent>
@@ -154,7 +218,7 @@ function destroy(name: string) {
                                 id="contents"
                                 v-model="storeForm.contents"
                                 rows="12"
-                                class="w-full resize-y rounded-md border border-input bg-background px-3 py-2 font-mono text-xs"
+                                class="ops-code-textarea"
                                 required
                             />
                             <p
@@ -189,23 +253,83 @@ function destroy(name: string) {
                 </CardContent>
             </Card>
 
-            <!-- Site list -->
-            <div class="space-y-3">
+            <section class="space-y-3">
+                <div class="ops-toolbar">
+                    <div class="ops-search">
+                        <Search
+                            class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                        />
+                        <Input
+                            v-model="search"
+                            class="pl-9"
+                            placeholder="Search config name, size, or modified time"
+                        />
+                    </div>
+                    <div
+                        class="flex flex-col gap-2 sm:flex-row sm:items-center"
+                    >
+                        <div class="relative">
+                            <SlidersHorizontal
+                                class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                            />
+                            <select
+                                v-model="statusFilter"
+                                class="h-9 rounded-md border border-input bg-background pr-8 pl-9 text-sm shadow-sm"
+                            >
+                                <option value="all">All sites</option>
+                                <option value="enabled">Enabled</option>
+                                <option value="disabled">Disabled</option>
+                            </select>
+                        </div>
+                        <Button
+                            v-if="search || statusFilter !== 'all'"
+                            variant="ghost"
+                            size="sm"
+                            @click="clearFilters"
+                        >
+                            <X class="mr-2 size-4" />
+                            Reset
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            :disabled="reloadForm.processing"
+                            @click="reload"
+                        >
+                            <RefreshCw class="mr-2 size-4" /> Reload
+                        </Button>
+                    </div>
+                </div>
+
                 <div
                     v-if="sites.length === 0"
-                    class="flex flex-col items-center justify-center rounded-xl border border-dashed py-12 text-center text-muted-foreground"
+                    class="flex flex-col items-center justify-center rounded-lg border border-dashed bg-card/70 py-16 text-center text-muted-foreground"
                 >
-                    <FileText class="mb-3 size-10 opacity-40" />
+                    <Globe class="mb-3 size-10 opacity-40" />
                     <p class="text-sm">No sites in sites-available yet.</p>
                 </div>
-                <Card v-for="site in sites" :key="site.name">
-                    <CardContent
-                        class="flex items-center justify-between px-4 py-3"
+                <div
+                    v-else-if="filteredSites.length === 0"
+                    class="flex flex-col items-center justify-center rounded-lg border border-dashed bg-card/70 py-16 text-center text-muted-foreground"
+                >
+                    <Search class="mb-3 size-10 opacity-40" />
+                    <p class="text-sm">No nginx sites match your filters.</p>
+                    <Button variant="link" size="sm" @click="clearFilters">
+                        Clear filters
+                    </Button>
+                </div>
+                <div v-else class="ops-list">
+                    <div
+                        v-for="site in filteredSites"
+                        :key="site.name"
+                        class="ops-list-row"
                     >
-                        <div class="flex min-w-0 items-center gap-3">
-                            <FileText
-                                class="size-4 shrink-0 text-muted-foreground"
-                            />
+                        <div class="flex min-w-0 items-start gap-3">
+                            <div
+                                class="mt-0.5 rounded-md border bg-background p-2 text-primary"
+                            >
+                                <FileText class="size-5" />
+                            </div>
                             <div class="min-w-0">
                                 <a
                                     :href="
@@ -217,12 +341,13 @@ function destroy(name: string) {
                                 >
                                     {{ site.name }}
                                 </a>
-                                <p class="text-xs text-muted-foreground">
-                                    {{ site.size }} bytes · {{ site.mod_time }}
+                                <p class="mt-1 text-xs text-muted-foreground">
+                                    {{ formatBytes(site.size) }} ·
+                                    {{ site.mod_time }}
                                 </p>
                             </div>
                         </div>
-                        <div class="flex shrink-0 items-center gap-2">
+                        <div class="flex flex-wrap gap-2 sm:justify-end">
                             <Badge
                                 :variant="
                                     site.enabled ? 'default' : 'secondary'
@@ -236,27 +361,33 @@ function destroy(name: string) {
                                 size="sm"
                                 :disabled="enableForm.processing"
                                 @click="enable(site.name)"
-                                >Enable</Button
                             >
+                                <Power class="mr-2 size-4" />
+                                Enable
+                            </Button>
                             <Button
                                 v-else
                                 variant="outline"
                                 size="sm"
                                 :disabled="disableForm.processing"
                                 @click="disable(site.name)"
-                                >Disable</Button
                             >
+                                <PowerOff class="mr-2 size-4" />
+                                Disable
+                            </Button>
                             <Button
                                 variant="destructive"
                                 size="sm"
                                 :disabled="deleteForm.processing"
                                 @click="destroy(site.name)"
-                                >Delete</Button
                             >
+                                <Trash2 class="mr-2 size-4" />
+                                Delete
+                            </Button>
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
 </template>

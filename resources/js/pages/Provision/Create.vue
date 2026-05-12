@@ -50,71 +50,117 @@ const form = useForm({
     enable_nginx: true,
 });
 
-// Auto-fill path and configs when domain changes
+const lastGeneratedNginxConfig = ref(props.defaults.nginx_config);
+const lastGeneratedSupervisorConfig = ref(props.defaults.supervisor_config);
+const lastGeneratedNginxName = ref(props.defaults.domain);
+const lastGeneratedSupervisorName = ref(props.defaults.domain ? `${props.defaults.domain}.conf` : '');
+const lastGeneratedPath = ref(props.defaults.path);
+
+// Auto-fill path, config filenames, and config contents when domain changes.
 watch(() => form.domain, (domain) => {
-    if (domain && !form.path) {
+    if (domain && (!form.path || form.path === lastGeneratedPath.value)) {
         form.path = `/var/www/html/${domain}`;
     }
 });
 
 watch([() => form.domain, () => form.path], ([domain, path]) => {
     if (!domain || !path) return;
-    if (form.nginx_config === props.defaults.nginx_config || !form.nginx_config) {
-        form.nginx_config = generateNginxConfig(domain, path);
+
+    if (!form.nginx_name || form.nginx_name === lastGeneratedNginxName.value) {
+        form.nginx_name = domain;
     }
-    if (form.supervisor_config === props.defaults.supervisor_config || !form.supervisor_config) {
-        form.supervisor_config = generateSupervisorConfig(domain, path);
+    lastGeneratedNginxName.value = domain;
+
+    const supervisorName = `${domain}.conf`;
+    if (!form.supervisor_name || form.supervisor_name === lastGeneratedSupervisorName.value) {
+        form.supervisor_name = supervisorName;
     }
+    lastGeneratedSupervisorName.value = supervisorName;
+
+    const nginxConfig = generateNginxConfig(domain, path);
+    if (!form.nginx_config || form.nginx_config === lastGeneratedNginxConfig.value) {
+        form.nginx_config = nginxConfig;
+    }
+    lastGeneratedNginxConfig.value = nginxConfig;
+
+    const supervisorConfig = generateSupervisorConfig(domain, path);
+    if (!form.supervisor_config || form.supervisor_config === lastGeneratedSupervisorConfig.value) {
+        form.supervisor_config = supervisorConfig;
+    }
+    lastGeneratedSupervisorConfig.value = supervisorConfig;
+    lastGeneratedPath.value = path;
 });
 
 function generateNginxConfig(domain: string, path: string): string {
     return `server {
     listen 80;
-    listen [::]:80;
-    server_name ${domain};
+    server_name ${domain} www.${domain} *.${domain};
     root ${path}/public;
     index index.php;
 
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
-
-    charset utf-8;
+    client_max_body_size 50M;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
-
-    error_page 404 /index.php;
-
     location ~ \\.php$ {
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        try_files $uri =404;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
     }
 
-    location ~ /\\.(?!well-known).* {
+    location ~ /\\.ht {
         deny all;
+    }
+
+    error_page 404 /404.html;
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+
+    listen 443 ssl;
+    ssl_certificate /etc/nginx/ssl/certificate.crt;
+    ssl_certificate_key /etc/nginx/ssl/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers off;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+
+    location /storage/ {
+        root ${path}/public/;
+        try_files $uri $uri/ =404;
     }
 }`;
 }
 
 function generateSupervisorConfig(domain: string, path: string): string {
-    const program = domain.replace(/[\.\-]/g, '_');
-    return `[program:${program}]
-process_name=%(program_name)s_%(process_num)02d
-command=php ${path}/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    const program = domain.split('.')[0].replace(/[^A-Za-z0-9]/g, '') || 'laravel';
+    return `[program:${program}-default-queue]
+process_name = %(program_name)s_%(process_num)02d
+command=php ${path}/artisan queue:work --queue=default --daemon
 autostart=true
 autorestart=true
-stopasgroup=true
-killasgroup=true
-user=www-data
+startsecs=0
+user=root
 numprocs=1
 redirect_stderr=true
 stdout_logfile=${path}/storage/logs/worker.log
-stopwaitsecs=3600`;
+
+[program:${program}-visitors-queue]
+process_name = %(program_name)s_%(process_num)02d
+command=php ${path}/artisan queue:work --queue=visitors --daemon
+autostart=true
+autorestart=true
+startsecs=0
+user=root
+numprocs=1
+redirect_stderr=true
+stdout_logfile=${path}/storage/logs/worker.log`;
 }
 
 const artisanInput = computed({
@@ -131,7 +177,15 @@ function removeCronEntry(i: number) {
 }
 
 function submit() {
-    form.post(provisionRoutes.store.url());
+    form
+        .transform((data) => ({
+            ...data,
+            nginx_config: data.enable_nginx ? data.nginx_config : '',
+            nginx_name: data.enable_nginx ? data.nginx_name : '',
+            supervisor_config: data.enable_supervisor ? data.supervisor_config : '',
+            supervisor_name: data.enable_supervisor ? data.supervisor_name : '',
+        }))
+        .post(provisionRoutes.store.url());
 }
 </script>
 
