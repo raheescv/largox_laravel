@@ -4,7 +4,9 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CronController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
+use App\Http\Controllers\LogController;
 use App\Http\Controllers\NginxSiteController;
+use App\Http\Controllers\ProvisionController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\SupervisorController;
@@ -56,6 +58,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Crontab
     Route::get('cron',  [CronController::class, 'index'])->name('cron.index');
     Route::put('cron',  [CronController::class, 'update'])->name('cron.update');
+
+    // Site provisioning wizard
+    Route::get('provision/create',  [ProvisionController::class, 'create'])->name('provision.create');
+    Route::post('provision',        [ProvisionController::class, 'store'])->name('provision.store');
+
+    // Log viewer
+    Route::get('logs', LogController::class)->name('logs.show');
 });
 
 require __DIR__.'/settings.php';

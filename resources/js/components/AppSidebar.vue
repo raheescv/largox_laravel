@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { LayoutGrid, Server, ScrollText, Globe, Activity, Clock } from 'lucide-vue-next';
+import { LayoutGrid, Server, ScrollText, Globe, Activity, Clock, PlusSquare, FileText } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,6 +17,8 @@ import {
 import { dashboard } from '@/routes';
 import servers from '@/routes/servers';
 import audit from '@/routes/audit';
+import provision from '@/routes/provision';
+import logs from '@/routes/logs';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -44,6 +46,16 @@ const mainNavItems: NavItem[] = [
         title: 'Crontab',
         href: '/cron',
         icon: Clock,
+    },
+    {
+        title: 'New Site',
+        href: provision.create(),
+        icon: PlusSquare,
+    },
+    {
+        title: 'Log Viewer',
+        href: logs.show(),
+        icon: FileText,
     },
     {
         title: 'Audit Logs',

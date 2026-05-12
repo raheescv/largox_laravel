@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
+import { onMounted, onUnmounted } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -45,6 +46,18 @@ defineOptions({
 });
 
 const props = defineProps<{ deployment: DeploymentModel }>();
+
+let timer: ReturnType<typeof setInterval> | null = null;
+
+onMounted(() => {
+    if (props.deployment.status === 'queued' || props.deployment.status === 'running') {
+        timer = setInterval(() => router.reload({ only: ['deployment'] }), 3000);
+    }
+});
+
+onUnmounted(() => {
+    if (timer) clearInterval(timer);
+});
 
 function statusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
     if (status === 'success') return 'default';
