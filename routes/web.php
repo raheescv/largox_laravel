@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CronController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\NginxSiteController;
 use App\Http\Controllers\ServerController;
@@ -17,7 +18,7 @@ Route::inertia('/', 'Welcome', [
 Route::match(['get', 'post'], '/register', fn () => abort(404));
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::resource('servers', ServerController::class)->except(['create', 'edit']);
     Route::post('servers/{server}/dispatch', [ServerController::class, 'dispatchAction'])
