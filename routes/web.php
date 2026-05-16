@@ -5,6 +5,7 @@ use App\Http\Controllers\CronController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\DeploymentDashboardController;
+use App\Http\Controllers\SiteTerminalController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NginxSiteController;
 use App\Http\Controllers\ProvisionController;
@@ -31,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('sites', SiteController::class)->except(['index', 'create', 'edit']);
     Route::post('sites/{site}/clone', [SiteController::class, 'clone'])->name('sites.clone');
     Route::post('sites/{site}/env', [SiteController::class, 'writeEnv'])->name('sites.env');
+    Route::get('sites/{site}/terminal', [SiteTerminalController::class, 'show'])->name('sites.terminal');
 
     Route::get('sites/{site}/deployments', [DeploymentController::class, 'index'])->name('deployments.index');
     Route::post('sites/{site}/deployments', [DeploymentController::class, 'store'])->name('deployments.store');
