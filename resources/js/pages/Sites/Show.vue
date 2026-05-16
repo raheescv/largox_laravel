@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { GitBranch, Play, Trash2 } from 'lucide-vue-next';
+import { GitBranch, LayoutDashboard, Play, Trash2 } from 'lucide-vue-next';
 import Heading from '@/components/Heading.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -106,9 +106,14 @@ function statusVariant(status: string): 'default' | 'secondary' | 'destructive' 
     <div class="space-y-6">
         <div class="flex items-center justify-between">
             <Heading :title="site.domain" :description="site.path" />
-            <Button variant="destructive" size="sm" :disabled="deleteForm.processing" @click="submitDelete">
-                <Trash2 class="mr-2 size-4" /> Delete
-            </Button>
+            <div class="flex gap-2">
+                <Button variant="outline" size="sm" :href="`/sites/${site.id}/deploy`" as="a">
+                    <LayoutDashboard class="mr-2 size-4" /> Deploy Dashboard
+                </Button>
+                <Button variant="destructive" size="sm" :disabled="deleteForm.processing" @click="submitDelete">
+                    <Trash2 class="mr-2 size-4" /> Delete
+                </Button>
+            </div>
         </div>
 
         <!-- Deploy -->

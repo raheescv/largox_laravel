@@ -4,6 +4,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CronController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
+use App\Http\Controllers\DeploymentDashboardController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NginxSiteController;
 use App\Http\Controllers\ProvisionController;
@@ -34,6 +35,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('sites/{site}/deployments', [DeploymentController::class, 'index'])->name('deployments.index');
     Route::post('sites/{site}/deployments', [DeploymentController::class, 'store'])->name('deployments.store');
     Route::get('deployments/{deployment}', [DeploymentController::class, 'show'])->name('deployments.show');
+
+    // Deployment dashboard (quick actions, pipelines, live streaming)
+    Route::get('sites/{site}/deploy', [DeploymentDashboardController::class, 'show'])->name('deploy.dashboard');
+    Route::post('sites/{site}/deploy/quick', [DeploymentDashboardController::class, 'quickAction'])->name('deploy.quick');
+    Route::post('sites/{site}/deploy/artisan', [DeploymentDashboardController::class, 'artisanCommand'])->name('deploy.artisan');
+    Route::post('sites/{site}/deploy/custom', [DeploymentDashboardController::class, 'customCommand'])->name('deploy.custom');
+    Route::post('sites/{site}/deploy/pipeline/{pipeline}', [DeploymentDashboardController::class, 'runPipeline'])->name('deploy.pipeline.run');
+    Route::get('sites/{site}/deploy/stream/{execId}', [DeploymentDashboardController::class, 'stream'])->name('deploy.stream');
+    Route::get('sites/{site}/deploy/stream/{execId}/status', [DeploymentDashboardController::class, 'streamStatus'])->name('deploy.stream.status');
+
+    // Pipeline CRUD
+    Route::post('sites/{site}/pipelines', [DeploymentDashboardController::class, 'storePipeline'])->name('deploy.pipelines.store');
+    Route::put('sites/{site}/pipelines/{pipeline}', [DeploymentDashboardController::class, 'updatePipeline'])->name('deploy.pipelines.update');
+    Route::delete('sites/{site}/pipelines/{pipeline}', [DeploymentDashboardController::class, 'destroyPipeline'])->name('deploy.pipelines.destroy');
+
+    // Preset CRUD
+    Route::post('sites/{site}/presets', [DeploymentDashboardController::class, 'storePreset'])->name('deploy.presets.store');
+    Route::delete('sites/{site}/presets/{preset}', [DeploymentDashboardController::class, 'destroyPreset'])->name('deploy.presets.destroy');
 
     Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit.index');
 

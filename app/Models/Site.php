@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+
 class Site extends Model
 {
     use HasFactory;
@@ -30,5 +31,15 @@ class Site extends Model
     public function deployments(): HasMany
     {
         return $this->hasMany(Deployment::class);
+    }
+
+    public function pipelines(): HasMany
+    {
+        return $this->hasMany(DeploymentPipeline::class);
+    }
+
+    public function commandPresets(): HasMany
+    {
+        return $this->hasMany(CommandPreset::class);
     }
 }
