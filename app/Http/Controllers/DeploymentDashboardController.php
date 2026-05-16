@@ -150,23 +150,42 @@ class DeploymentDashboardController extends Controller
         $streamInfo = $agent->streamUrl($site->server, $execId);
 
         return response()->stream(function () use ($streamInfo) {
-            $ch = curl_init($streamInfo['url']);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, array_map(
-                fn ($k, $v) => "$k: $v",
-                array_keys($streamInfo['headers']),
-                array_values($streamInfo['headers'])
-            ));
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 600);
-            curl_setopt($ch, CURLOPT_WRITEFUNCTION, function ($ch, $data) {
-                echo $data;
-                ob_flush();
-                flush();
+            // Tear down every output buffer so each echo reaches the browser immediately.
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
 
-                return strlen($data);
-            });
-            curl_exec($ch);
-            curl_close($ch);
+            try {
+                $client = new \GuzzleHttp\Client();
+                $response = $client->request('GET', $streamInfo['url'], [
+                    'headers' => $streamInfo['headers'],
+                    'stream' => true,
+                    'timeout' => 600,
+                    'connect_timeout' => 10,
+                    'http_errors' => false,
+                ]);
+
+                if ($response->getStatusCode() !== 200) {
+                    echo "event: error\ndata: ".json_encode([
+                        'error' => 'agent returned HTTP '.$response->getStatusCode(),
+                    ])."\n\n";
+                    flush();
+
+                    return;
+                }
+
+                $body = $response->getBody();
+                while (! $body->eof()) {
+                    $chunk = $body->read(256);
+                    if ($chunk !== '') {
+                        echo $chunk;
+                        flush();
+                    }
+                }
+            } catch (\Throwable $e) {
+                echo "event: error\ndata: ".json_encode(['error' => $e->getMessage()])."\n\n";
+                flush();
+            }
         }, 200, [
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',

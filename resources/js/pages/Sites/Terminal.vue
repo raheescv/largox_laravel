@@ -62,6 +62,7 @@ const runStatus = ref<'idle' | 'running' | 'success' | 'error'>('idle');
 const activeLabel = ref('');
 const history = ref<HistoryEntry[]>([]);
 let evtSource: EventSource | null = null;
+let streamDone = false; // guard: prevents onerror from firing after a clean done event
 
 // ── Custom input ──────────────────────────────────────────────────────────────
 
@@ -116,8 +117,8 @@ async function runAction(label: string, streamAction: string, payload: Record<st
     let execId: string;
     try {
         const res = await post(`/sites/${props.site.id}/deploy/quick`, { action: streamAction });
-        if (res.error) throw new Error(res.error);
-        // Some actions use artisan/custom routes
+        if (res?.error) throw new Error(res.error);
+        if (!res?.exec_id) throw new Error('No exec_id returned — is the Go agent running and configured?');
         execId = res.exec_id;
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -142,7 +143,8 @@ async function runStreamAction(label: string, url: string, body: Record<string, 
     let execId: string;
     try {
         const res = await post(url, body);
-        if (res.error) throw new Error(res.error);
+        if (res?.error) throw new Error(res.error);
+        if (!res?.exec_id) throw new Error('No exec_id returned — is the Go agent running and configured?');
         execId = res.exec_id;
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -156,6 +158,7 @@ async function runStreamAction(label: string, url: string, body: Record<string, 
 
 function connectStream(execId: string, label: string) {
     if (evtSource) { evtSource.close(); evtSource = null; }
+    streamDone = false;
 
     evtSource = new EventSource(`/sites/${props.site.id}/deploy/stream/${execId}`);
 
@@ -167,17 +170,14 @@ function connectStream(execId: string, label: string) {
     });
 
     evtSource.addEventListener('done', () => {
+        streamDone = true;
         evtSource?.close();
         evtSource = null;
 
         const lastMeta = [...lines.value].reverse().find((l) => l.stream === 'meta');
         const status = lastMeta?.text.startsWith('✗') ? 'error' : 'success';
 
-        emit({
-            stream: 'meta',
-            text: status === 'success' ? `✓  Done` : `✗  Failed`,
-            ts: now(),
-        });
+        emit({ stream: 'meta', text: status === 'success' ? '✓  Done' : '✗  Failed', ts: now() });
 
         history.value.unshift({ label, action: label, payload: {}, lines: [...lines.value], status });
         if (history.value.length > 20) history.value.pop();
@@ -185,10 +185,26 @@ function connectStream(execId: string, label: string) {
         finish(status);
     });
 
-    evtSource.onerror = () => {
+    evtSource.addEventListener('error', (e: MessageEvent) => {
+        // Server-sent error event (our explicit event: error from the proxy)
+        if (streamDone) return;
+        streamDone = true;
         evtSource?.close();
         evtSource = null;
-        emit({ stream: 'meta', text: '✗  Connection lost', ts: now() });
+        try {
+            const data = JSON.parse(e.data ?? '{}');
+            emit({ stream: 'stderr', text: `Agent error: ${data.error ?? 'unknown'}`, ts: now() });
+        } catch {}
+        finish('error');
+    });
+
+    evtSource.onerror = () => {
+        // Network/HTTP error — only fires if we haven't cleanly finished
+        if (streamDone) return;
+        streamDone = true;
+        evtSource?.close();
+        evtSource = null;
+        emit({ stream: 'stderr', text: '✗  Stream connection failed. Check that the Go agent is running and reachable.', ts: now() });
         finish('error');
     };
 }

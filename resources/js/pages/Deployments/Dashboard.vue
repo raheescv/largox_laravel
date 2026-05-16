@@ -114,6 +114,7 @@ const isRunning = ref(false);
 const runStatus = ref<'idle' | 'running' | 'success' | 'error'>('idle');
 const activeAction = ref('');
 let evtSource: EventSource | null = null;
+let streamDone = false;
 
 function clearTerminal() {
     terminalLines.value = [];
@@ -129,16 +130,13 @@ function scrollTerminal() {
 }
 
 function connectStream(execId: string) {
-    if (evtSource) {
-        evtSource.close();
-        evtSource = null;
-    }
+    if (evtSource) { evtSource.close(); evtSource = null; }
+    streamDone = false;
     activeExecId.value = execId;
     isRunning.value = true;
     runStatus.value = 'running';
 
-    const url = `/sites/${props.site.id}/deploy/stream/${execId}`;
-    evtSource = new EventSource(url);
+    evtSource = new EventSource(`/sites/${props.site.id}/deploy/stream/${execId}`);
 
     evtSource.addEventListener('log', (e: MessageEvent) => {
         try {
@@ -149,6 +147,7 @@ function connectStream(execId: string) {
     });
 
     evtSource.addEventListener('done', () => {
+        streamDone = true;
         evtSource?.close();
         evtSource = null;
         isRunning.value = false;
@@ -157,14 +156,29 @@ function connectStream(execId: string) {
         router.reload({ only: ['deployments'] });
     });
 
+    evtSource.addEventListener('error', (e: MessageEvent) => {
+        if (streamDone) return;
+        streamDone = true;
+        evtSource?.close();
+        evtSource = null;
+        isRunning.value = false;
+        runStatus.value = 'error';
+        try {
+            const data = JSON.parse(e.data ?? '{}');
+            terminalLines.value.push({ stream: 'stderr', text: `Agent error: ${data.error ?? 'unknown'}`, ts: new Date().toISOString() });
+        } catch {}
+    });
+
     evtSource.onerror = () => {
+        if (streamDone) return;
+        streamDone = true;
         evtSource?.close();
         evtSource = null;
         isRunning.value = false;
         runStatus.value = 'error';
         terminalLines.value.push({
-            stream: 'meta',
-            text: '✗ connection lost',
+            stream: 'stderr',
+            text: '✗ Stream connection failed. Check that the Go agent is running and reachable.',
             ts: new Date().toISOString(),
         });
     };
@@ -205,10 +219,10 @@ async function runQuickAction(action: string, label: string) {
     });
 
     const json = await res.json();
-    if (!res.ok || json.error) {
+    if (!res.ok || json.error || !json.exec_id) {
         terminalLines.value.push({
             stream: 'stderr',
-            text: json.error ?? 'Request failed',
+            text: json.error ?? (!json.exec_id ? 'No exec_id — is the Go agent running?' : 'Request failed'),
             ts: new Date().toISOString(),
         });
         runStatus.value = 'error';
